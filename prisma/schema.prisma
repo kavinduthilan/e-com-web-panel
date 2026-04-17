@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sizes      Size[]
+  categories Category[]
+}
+
+enum Status {
+  Active
+  Inactive
+}
+
+model Size {
+  id     Int    @id @default(autoincrement())
+  size   String
+  status Status @default(Active)
+
+  createdBy   Int
+  createdById User @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id     Int    @id @default(autoincrement())
+  name   String
+  status Status @default(Active)
+
+  createdBy   Int
+  createdById User @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
