@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@lib/prisma";
+import { getLoggedInUser } from "@lib/auth";
 
-// GET all sizes with user information
+// GET all categories with user information
 export async function GET(request: NextRequest) {
      try {
           const { searchParams } = new URL(request.url);
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
                     take: pageSize,
                     orderBy: { createdAt: "desc" },
                     include: {
-                         createdById: {
+                         createdBy: {
                               select: {
                                    firstName: true,
                                    lastName: true,
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
                name: s.name,
                status: s.status,
                createdAt: s.createdAt.toLocaleDateString("en-US"),
-               createdBy: `${s.createdById.firstName} ${s.createdById.lastName}`,
+               createdBy: `${s.createdBy.firstName} ${s.createdBy.lastName}`,
           }));
 
           return NextResponse.json({
@@ -85,7 +86,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
      try {
           const body = await request.json();
-          const { name, status, userId } = body;
+          const { name, status } = body;
+
+          const user = await getLoggedInUser(request);
+          if (!user) {
+               return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+          }
+          const userId = user.id;
 
           // Validate input
           if (!name || !userId) {
@@ -99,8 +106,16 @@ export async function POST(request: NextRequest) {
                data: {
                     name,
                     status: status || "Active",
-                    createdBy: userId,
+                    createdById: Number(userId),
                },
+               include: {
+                    createdBy: {
+                         select: {
+                              firstName: true,
+                              lastName: true,
+                         },
+                    },
+               }
           });
 
           return NextResponse.json(
@@ -113,7 +128,7 @@ export async function POST(request: NextRequest) {
                          month: "short",
                          day: "2-digit",
                     }),
-                    createdBy: newCategory.createdBy,
+                    createdBy: newCategory.createdBy.firstName + " " + newCategory.createdBy.lastName,
                },
                { status: 201 }
           );
@@ -167,7 +182,7 @@ export async function PUT(request: NextRequest) {
                     month: "short",
                     day: "2-digit",
                }),
-               createdBy: updatedCategory.createdBy,
+               createdById: updatedCategory.createdById,
           });
      } catch (error) {
           console.error("Error updating category:", error);

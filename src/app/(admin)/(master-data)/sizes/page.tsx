@@ -85,8 +85,7 @@ export default function Sizes() {
       return;
     }
 
-    try {
-      const userId = 1; // Replace with actual user ID from auth
+    try { // Replace with actual user ID from auth
 
       if (editingId) {
         // Update existing size
@@ -110,7 +109,6 @@ export default function Sizes() {
           body: JSON.stringify({
             size: formData.size,
             status: formData.status,
-            userId,
           }),
         });
 

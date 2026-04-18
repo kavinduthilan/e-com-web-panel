@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@lib/prisma";
+import { getLoggedInUser } from "@lib/auth";
 
 // GET all sizes with user information
 export async function GET(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         orderBy: { createdAt: "desc" },
         include: {
-          createdById: {
+          createdBy: {
             select: {
               firstName: true,
               lastName: true,
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       size: s.size,
       status: s.status,
       createdAt: s.createdAt.toLocaleDateString("en-US"),
-      createdBy: `${s.createdById.firstName} ${s.createdById.lastName}`,
+      createdBy: `${s.createdBy.firstName} ${s.createdBy.lastName}`,
     }));
 
     return NextResponse.json({
@@ -85,10 +86,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { size, status, userId } = body;
+    const { size, status } = body;
+
+    const user = await getLoggedInUser(request);
+    if (!user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+      const userId = user.id;
 
     // Validate input
-    if (!size || !userId) {
+    if (!size) {
       return NextResponse.json(
         { error: "Size and userId are required" },
         { status: 400 }
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
       data: {
         size,
         status: status || "Active",
-        createdBy: userId,
+        createdById: Number(userId),
       },
     });
 
@@ -113,7 +121,7 @@ export async function POST(request: NextRequest) {
           month: "short",
           day: "2-digit",
         }),
-        createdBy: newSize.createdBy,
+        createdBy: newSize.createdById,
       },
       { status: 201 }
     );

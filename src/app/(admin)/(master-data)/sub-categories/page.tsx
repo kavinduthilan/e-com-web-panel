@@ -2,21 +2,36 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
+import axios from "axios";
+import { Category } from "@/generated/prisma";
 
-interface Category {
+
+interface SubCategory {
      id: number;
+     categoryId: number | null;
      name: string;
      status: string;
      createdAt: string;
      createdBy?: string;
 }
 
-export default function Categories() {
-     const [categories, setCategories] = useState<Category[]>([]);
+interface FormData {
+     categoryId: number | null,
+     name: string,
+     status: string
+}
+
+export default function SubCategories() {
+     const [categories, setCategories] = useState([]);
+     const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
      const [showModal, setShowModal] = useState(false);
      const [loading, setLoading] = useState(true);
      const [error, setError] = useState("");
-     const [formData, setFormData] = useState({ name: "", status: "Active" });
+     const [formData, setFormData] = useState<FormData>({
+          categoryId: null,
+          name: "",
+          status: "Active"
+     });
      const [editingId, setEditingId] = useState<number | null>(null);
 
 
@@ -28,6 +43,7 @@ export default function Categories() {
      // filters
      const [filters, setFilters] = useState({
           id: "",
+          category: "",
           name: "",
           status: "",
           createdBy: "",
@@ -36,8 +52,18 @@ export default function Categories() {
 
      const [debouncedFilters, setDebouncedFilters] = useState(filters);
 
-     // Fetch categories from database
-     const fetchCategories = useCallback(async () => {
+     const fetchCategories = async () => {
+          const response = await axios.get(`/api/categories/active`);
+          
+          setCategories(response.data);
+     }
+
+     useEffect(() => {
+          fetchCategories();
+     },[]);
+
+     // Fetch sub-categories from database
+     const fetchSubCategories = useCallback(async () => {
           try {
                setLoading(true);
 
@@ -52,7 +78,7 @@ export default function Categories() {
                const res = await fetch(`/api/categories?${params.toString()}`);
                const result = await res.json();
 
-               setCategories(result.data);
+               setSubCategories(result.data);
                setTotalPages(result.totalPages);
           } catch (err) {
                console.error(err);
@@ -62,14 +88,14 @@ export default function Categories() {
      }, [page, pageSize, debouncedFilters]);
 
      useEffect(() => {
-          fetchCategories();
-     }, [fetchCategories]);
+          fetchSubCategories();
+     }, [fetchSubCategories]);
 
      useEffect(() => {
           const timeout = setTimeout(() => {
                setDebouncedFilters(filters);
-               setPage(1); // reset page when filtering
-          }, 1000); // delay
+               setPage(1); 
+          }, 1000);
 
           return () => clearTimeout(timeout);
      }, [filters]);
@@ -77,21 +103,22 @@ export default function Categories() {
      // Handle form submission
      const handleSubmit = async (e: React.FormEvent) => {
           e.preventDefault();
+
           if (!formData.name.trim()) {
-               setError("Please enter a category");
+               setError("Please enter a sub-category");
                return;
           }
 
           try {
-               const userId = 1; // Replace with actual user ID from auth
 
                if (editingId) {
                     // Update existing size
-                    const response = await fetch("/api/categories", {
+                    const response = await fetch("/api/sub-categories", {
                          method: "PUT",
                          headers: { "Content-Type": "application/json" },
                          body: JSON.stringify({
                               id: editingId,
+                              categoryId: formData.categoryId,
                               name: formData.name,
                               status: formData.status,
                          }),
@@ -100,14 +127,14 @@ export default function Categories() {
                     if (!response.ok) throw new Error("Failed to update category");
                     setError("");
                } else {
-                    // Create new size
-                    const response = await fetch("/api/categories", {
+                    // Create new sub-category
+                    const response = await fetch("/api/sub-categories", {
                          method: "POST",
                          headers: { "Content-Type": "application/json" },
                          body: JSON.stringify({
+                              categoryId: formData.categoryId,
                               name: formData.name,
                               status: formData.status,
-                              userId,
                          }),
                     });
 
@@ -116,10 +143,14 @@ export default function Categories() {
                }
 
                // Reset form and refresh list
-               setFormData({ name: "", status: "Active" });
+               setFormData({
+                    categoryId: null,
+                    name: "",
+                    status: "Active"
+               });
                setEditingId(null);
                setShowModal(false);
-               await fetchCategories();
+               await fetchSubCategories();
           } catch (err) {
                setError(err instanceof Error ? err.message : "An error occurred");
                console.error(err);
@@ -127,8 +158,11 @@ export default function Categories() {
      };
 
      // Handle edit
-     const handleEdit = (category: Category) => {
-          setFormData({ name: category.name, status: category.status });
+     const handleEdit = (category: SubCategory) => {
+          setFormData({
+               categoryId: category.categoryId,
+               name: category.name, status: category.status
+          });
           setEditingId(category.id);
           setShowModal(true);
      };
@@ -136,7 +170,11 @@ export default function Categories() {
      // Handle modal close
      const handleCloseModal = () => {
           setShowModal(false);
-          setFormData({ name: "", status: "Active" });
+          setFormData({
+               categoryId: null,
+               name: "",
+               status: "Active"
+          });
           setEditingId(null);
      };
 
@@ -146,10 +184,10 @@ export default function Categories() {
                <div className="flex items-center justify-between mb-6">
                     <div>
                          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-                              Categories List
+                              Sub-Categories List
                          </h1>
                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Manage your product categories efficiently
+                              Manage your product sub-categories efficiently
                          </p>
                     </div>
 
@@ -158,7 +196,7 @@ export default function Categories() {
                               onClick={() => setShowModal(true)}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white rounded-lg text-sm"
                          >
-                              <Plus size={16} /> Add Size
+                              <Plus size={16} /> Add Subcategory
                          </button>
                     </div>
                </div>
@@ -174,7 +212,7 @@ export default function Categories() {
                <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                     {loading ? (
                          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                              Loading categories...
+                              Loading sub-categories...
                          </div>
                     ) : (
                          <>
@@ -182,6 +220,7 @@ export default function Categories() {
                                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                                         <tr>
                                              <th className="text-left px-4 py-3 font-medium">Id</th>
+                                             <th className="text-left px-4 py-3 font-medium">Category</th>
                                              <th className="text-left px-4 py-3 font-medium">Name</th>
                                              <th className="text-left px-4 py-3 font-medium">Status</th>
                                              <th className="text-left px-4 py-3 font-medium">Created By</th>
@@ -198,6 +237,17 @@ export default function Categories() {
                                                        value={filters.id}
                                                        onChange={(e) =>
                                                             setFilters({ ...filters, id: e.target.value })
+                                                       }
+                                                       className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                                                  />
+                                             </th>
+                                             <th className="p-2">
+                                                  <input
+                                                       type="text"
+                                                       placeholder="Search Category"
+                                                       value={filters.category}
+                                                       onChange={(e) =>
+                                                            setFilters({ ...filters, category: e.target.value })
                                                        }
                                                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
                                                   />
@@ -251,20 +301,23 @@ export default function Categories() {
                                    </thead>
 
                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                                        {categories?.length === 0 ? (
+                                        {subCategories?.length === 0 ? (
                                              <tr>
                                                   <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
                                                        No categories found
                                                   </td>
                                              </tr>
                                         ) : (
-                                             categories?.map((item) => (
+                                             subCategories?.map((item) => (
                                                   <tr
                                                        key={item.id}
                                                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                                                   >
                                                        <td className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">
                                                             {item.id}
+                                                       </td>
+                                                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                                                            {item.categoryId}
                                                        </td>
                                                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
                                                             {item.name}
@@ -328,11 +381,11 @@ export default function Categories() {
                                              disabled={page === 1}
                                              onClick={() => setPage((p) => p - 1)}
                                              className="px-3 py-1 border rounded
-                 border-gray-300 dark:border-gray-600
-                 text-gray-700 dark:text-gray-300
-                 bg-white dark:bg-gray-800
-                 hover:bg-gray-100 dark:hover:bg-gray-700
-                 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                  border-gray-300 dark:border-gray-600
+                                                  text-gray-700 dark:text-gray-300
+                                                  bg-white dark:bg-gray-800
+                                                  hover:bg-gray-100 dark:hover:bg-gray-700
+                                                  disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                              Prev
                                         </button>
@@ -345,11 +398,11 @@ export default function Categories() {
                                              disabled={page === totalPages}
                                              onClick={() => setPage((p) => p + 1)}
                                              className="px-3 py-1 border rounded
-                 border-gray-300 dark:border-gray-600
-                 text-gray-700 dark:text-gray-300
-                 bg-white dark:bg-gray-800
-                 hover:bg-gray-100 dark:hover:bg-gray-700
-                 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                  border-gray-300 dark:border-gray-600
+                                                  text-gray-700 dark:text-gray-300
+                                                  bg-white dark:bg-gray-800
+                                                  hover:bg-gray-100 dark:hover:bg-gray-700
+                                                  disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                              Next
                                         </button>
@@ -371,17 +424,33 @@ export default function Categories() {
                               className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg"
                          >
                               <h2 className="text-lg font-semibold mb-4 dark:text-white">
-                                   {editingId ? "Edit Size" : "Add Size"}
+                                   {editingId ? "Edit Sub-Category" : "Add Sub-Category"}
                               </h2>
 
                               <form onSubmit={handleSubmit} className="space-y-4">
                                    <div>
                                         <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                             Size Name
+                                             Category
+                                        </label>
+                                        <select
+                                             className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 w-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                                             onChange={(e) =>
+                                                  setFormData({ ...formData, categoryId: Number(e.target.value) })
+                                             }
+                                        >
+                                             {categories.map((cat: Category) => (
+                                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                             ))}
+                                             
+                                        </select>
+                                   </div>
+
+                                   <div>
+                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                             Subcategory Name
                                         </label>
                                         <input
                                              type="text"
-                                             placeholder="e.g., Small, Medium, Large"
                                              className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 w-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                                              value={formData.name}
                                              onChange={(e) =>
