@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Sizes", path: "/sizes", pro: false },
       { name: "Categories", path: "/categories", pro: false },
+      { name: "SubCategories", path: "/sub-categories", pro: false}
     ],
   },
 
@@ -48,7 +49,6 @@ const AppSidebar: React.FC = () => {
 
   const renderMenuItems = (
     navItems: NavItem[],
-    menuType: "main" | "others"
   ) => (
     <ul className="flex flex-col gap-4">
       {navItems.map((nav, index) => (
@@ -238,7 +238,7 @@ const AppSidebar: React.FC = () => {
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(navItems)}
             </div>
 
 
