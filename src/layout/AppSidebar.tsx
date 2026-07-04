@@ -32,6 +32,14 @@ const navItems: NavItem[] = [
     path: "/",
   },
   {
+    icon: <GridIcon />,
+    name: "Administration",
+    subItems: [
+      { name: "System Logs", path: "/system-logs", pro: false },
+      { name: "System Users", path: "/system-users", pro: false },
+    ]
+  },
+  {
     name: "Master Data",
     icon: <PageIcon />,
     subItems: [

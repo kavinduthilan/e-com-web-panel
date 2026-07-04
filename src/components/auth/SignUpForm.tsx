@@ -4,12 +4,15 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState,  useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { signup } from "@/actions/auth/signup";
 
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -22,31 +25,32 @@ export default function SignUpForm() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+  
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
+      e.preventDefault();
+    setError(null);
+    
+    const payload = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email : formData.email,
+      password: formData.password
+    };
+  
+      
+      startTransition(async () => {
+        const result = await signup(payload);
+  
+        if (!result.success) {
+          setError(result.message ??  "Something went wrong");
+          return;
+        }
+  
+        router.refresh();
+        router.push("/");
       });
+    };
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error);
-        return;
-      }
-
-      router.push("/");
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong");
-    }
-  };
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full overflow-y-auto no-scrollbar">
       <div className="w-full max-w-md sm:pt-10 mx-auto mb-5">
@@ -123,6 +127,11 @@ export default function SignUpForm() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="space-y-5">
+                {error && (
+                  <div className="text-sm text-error-500" role="alert">
+                    {error}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   {/* <!-- First Name --> */}
                   <div className="sm:col-span-1">
@@ -157,7 +166,7 @@ export default function SignUpForm() {
                     Email<span className="text-error-500">*</span>
                   </Label>
                   <Input
-                    type="email"
+                    type="text"
                     id="email"
                     name="email"
                     placeholder="Enter your email"
@@ -211,6 +220,7 @@ export default function SignUpForm() {
                 <div>
                   <button
                     type="submit"
+                    disabled={isPending}
                     className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600">
                     Sign Up
                   </button>
