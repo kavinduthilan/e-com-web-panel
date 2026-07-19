@@ -1,97 +1,52 @@
 "use server"
 
+import { z } from "zod";
+import { deleteSession } from "@/lib/session";
+import { redirect } from "next/navigation";
+import { LoginState } from "@/lib/definitions";
 import { createServerActionClient } from "@/lib/supabase/server-action";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
-
-export async function login(email: string,  password: string) {
-
-     try {
-          const supabase = await createServerActionClient();
-
-          // validate input
-          if (!email || !password) {
-               return {
-                    success: false,
-                    error: "All fields are required",
-               }
-          }
-
-          console.log('email', email);
-
-          // find user
-          const { data: user, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", email)
-          .single();
-          
-
-          if (error || !user) {
-               return {
-               success: false,
-               error: "User not found",
-               };
-          }
-
-          // Compare password
-          const isPasswordValid = await bcrypt.compare(
-               password,
-               user.password
-          );
-
-          if (!isPasswordValid) {
-               return {
-               success: false,
-               error: "Invalid password",
-               };
-          }
 
 
-          // Generate JWT
-          const token = jwt.sign(
-               {
-                    id: user.id,
-                    email: user.email,
-               },
-                    process.env.JWT_SECRET!,
-               {
-                    expiresIn: "24h",
-               }
-          );
 
-          // Store token in cookie
-          const cookieStore = await cookies();
+const loginSchema = z.object({
+  email: z.string(),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .trim(),
+});
 
-          cookieStore.set("token", token, {
-               httpOnly: true,
-               secure: process.env.NODE_ENV === "production",
-               sameSite: "lax",
-               path: "/",
-               maxAge: 60 * 60 * 24, // 24 hours
-          });
+export async function login(prevState: LoginState, formData: FormData) {
+  const result = loginSchema.safeParse(Object.fromEntries(formData));
 
-          return {
-               success: true,
-               message: "User logged in successfully",
-               user: {
-               id: user.id,
-               email: user.email,
-               },
-          };
-          
-          
-     } catch (error) {
-          console.error("Login error:", error);
+  if (!result.success) {
+    return {
+      errors: result.error.flatten().fieldErrors,
+    };
+  }
 
-          return {
-               success: false,
-               error: "Failed to log in user",
-          };
-     }
+  const { email, password } = result.data;
 
-     
+  console.log(email, password)
 
+  const supabase = await createServerActionClient();
 
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return {
+      message: "Login failed. Please check your email and password and try again.",
+    }
+  }
+  console.log('data', data);
+  
+  redirect("/profile");
+}
+
+export async function logout() {
+  await deleteSession();
+  redirect("/login");
 }

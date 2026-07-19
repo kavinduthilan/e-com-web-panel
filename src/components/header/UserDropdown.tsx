@@ -1,11 +1,19 @@
 "use client";
+
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
+import { useUser } from "@/hooks/useUser";
+
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+
+  const { user } = useUser();
+
+  console.log('user', user);
+
+  
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();
@@ -16,11 +24,8 @@ export default function UserDropdown() {
     setIsOpen(false);
   }
 
-  useEffect(() => {
-    fetch("/api/me")
-      .then((res) => res.json())
-      .then((data) => setUser(data));
-  }, []);
+
+  
 
   return (
     <div className="relative">
@@ -29,12 +34,10 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-white border border-gray-200 dark:border-gray-800 flex items-center justify-center">
-          {user?.firstName && user?.lastName
-            ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-            : "U"}
+          user
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">{user?.firstName}</span>
+        {/* <span className="block mr-1 font-medium text-theme-sm">{user?.email}</span> */}
 
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
@@ -61,9 +64,6 @@ export default function UserDropdown() {
         className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
       >
         <div>
-          <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
-            {user?.firstName + " " + user?.lastName}
-          </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
             {user?.email}
           </span>

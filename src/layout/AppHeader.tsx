@@ -165,7 +165,6 @@ const AppHeader: React.FC = () => {
 
 
           </div>
-          {/* <!-- User Area --> */}
           <UserDropdown />
 
         </div>
