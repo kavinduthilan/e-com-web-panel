@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Size {
   id: number;
   size: string;
-  status: string;
+  status: boolean;
   createdAt: string;
   createdBy?: string;
 }
@@ -14,10 +15,12 @@ interface Size {
 export default function Sizes() {
   const [sizes, setSizes] = useState<Size[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({ size: "", status: "Active" });
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const supabase = createClient();
+
 
   // pagination
   const [page, setPage] = useState(1);
@@ -33,42 +36,25 @@ export default function Sizes() {
     createdAt: "",
   });
 
-  const [debouncedFilters, setDebouncedFilters] = useState(filters);
 
-  const fetchSizes = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-        size: debouncedFilters.size,
-        status: debouncedFilters.status,
-        createdBy: debouncedFilters.createdBy, 
-      });
-
-      const res = await fetch(`/api/sizes?${params.toString()}`);
-      const result = await res.json();
-
-      setSizes(result.data);
-      setTotalPages(result.totalPages);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, debouncedFilters]);
-
-  // -----------------------------
-  // FETCH DATA (ONLY ON LOAD)
-  // -----------------------------
+  
   useEffect(() => {
+  const fetchSizes = async () => {
+    const { data, error } = await supabase.from("sizes").select("*");
+    if (error) {
+      console.error("Supabase error:", error.message, error);
+      return;
+    }
+    setSizes(data || []);
+  };
+
     fetchSizes();
-  }, [fetchSizes]);
+  }, []);
+
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setDebouncedFilters(filters);
+      // setDebouncedFilters(filters);
       setPage(1); // reset page when filtering
     }, 1000); // delay
 
@@ -120,7 +106,7 @@ export default function Sizes() {
       setFormData({ size: "", status: "Active" });
       setEditingId(null);
       setShowModal(false);
-      await fetchSizes();
+      // await fetchSizes();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       console.error(err);
@@ -173,11 +159,7 @@ export default function Sizes() {
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            Loading sizes...
-          </div>
-        ) : (
+        
           <>
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
@@ -272,12 +254,13 @@ export default function Sizes() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === "Active"
-                            ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
-                            : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
-                            }`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.status
+                              ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
+                              : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+                          }`}
                         >
-                          {item.status}
+                          {item.status ? "Active" : "Inactive"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
@@ -358,7 +341,7 @@ export default function Sizes() {
               </div>
             </div>
           </>
-        )}
+        
       </div>
 
 
