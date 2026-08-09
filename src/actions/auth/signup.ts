@@ -78,5 +78,5 @@ export async function signup(data: SignupData) {
       message: "Something went wrong.",
     };
   }
-  redirect("/profile");
+  redirect("/");
 }

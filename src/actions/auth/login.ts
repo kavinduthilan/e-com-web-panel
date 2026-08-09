@@ -43,10 +43,6 @@ export async function login(prevState: LoginState, formData: FormData) {
   }
   console.log('data', data);
   
-  redirect("/profile");
+  redirect("/");
 }
 
-export async function logout() {
-  await deleteSession();
-  redirect("/login");
-}
