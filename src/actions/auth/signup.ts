@@ -1,7 +1,7 @@
 "use server";
 
 import { createServerActionClient } from "@/lib/supabase/server-action";
-import bcrypt from "bcryptjs";
+import { redirect } from "next/navigation";
 
 type SignupData = {
   firstName: string;
@@ -11,74 +11,65 @@ type SignupData = {
 };
 
 export async function signup(data: SignupData) {
+  const { firstName, lastName, email, password } = data;
+
+  // Validation
+  if (!firstName || !lastName || !email || !password) {
+    return {
+      success: false,
+      message: "All fields are required.",
+    };
+  }
+
+  if (password.length < 8) {
+    return {
+      success: false,
+      message: "Password must be at least 8 characters.",
+    };
+  }
+
   try {
-    const { firstName, lastName, email, password } = data;
-
-    // Validation
-    if (!firstName || !lastName || !email || !password) {
-      return {
-        success: false,
-        message: "All fields are required.",
-      };
-    }
-
-    if (password.length < 8) {
-      return {
-        success: false,
-        message: "Password must be at least 8 characters.",
-      };
-    }
-
     const supabase = await createServerActionClient();
 
-    // Check if email already exists
-    const { data: existingUser, error: findError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+    // Let Supabase Auth create the user (handles hashing, uniqueness, etc.)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+      },
+    });
 
-    if (findError) {
+    if (authError) {
       return {
         success: false,
-        message: findError.message,
+        message: authError.message,
       };
     }
 
-    if (existingUser) {
+    if (!authData.user) {
       return {
         success: false,
-        message: "Email already exists.",
+        message: "Something went wrong creating your account.",
       };
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Create the profile row
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: authData.user.id,
+      first_name: firstName,
+      last_name: lastName,
+    });
 
-    // Insert user
-    const { data: user, error: insertError } = await supabase
-      .from("users")
-      .insert({
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        password: hashedPassword,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
+    if (profileError) {
       return {
         success: false,
-        message: insertError.message,
+        message: profileError.message,
       };
     }
-
-    return {
-      success: true,
-      message: "Account created successfully.",
-      user,
-    };
   } catch (error) {
     console.error(error);
 
@@ -87,4 +78,5 @@ export async function signup(data: SignupData) {
       message: "Something went wrong.",
     };
   }
+  redirect("/profile");
 }
