@@ -2,30 +2,54 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createSize, getSizes, updateSize } from "@/actions/sizes/sizes";
+import { getCurrentUser } from "@/actions/auth/getCurrentUser";
 
 interface Size {
   id: number;
   size: string;
   status: boolean;
   createdAt: string;
-  createdBy?: string;
+  createdBy?: string | number |  null;
 }
+type StatusLabel = "Active" | "Inactive";
 
 export default function Sizes() {
   const [sizes, setSizes] = useState<Size[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
-  const [formData, setFormData] = useState({ size: "", status: "Active" });
+  const [formData, setFormData] = useState<{ size: string; status: StatusLabel }>({
+    size: "",
+    status: "Active",
+  });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const supabase = createClient();
+ 
+
+  useEffect(()=> {
+    const user =  getCurrentUser();
+
+    console.log('user', user);
+  })
 
 
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
+
+  function formatDate(dateString: string): string {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
   // filters
   const [filters, setFilters] = useState({
@@ -36,22 +60,33 @@ export default function Sizes() {
     createdAt: "",
   });
 
+  // component.tsx
+const fetchSizes = useCallback(async () => {
+  try {
+    const data = await getSizes();
 
-  
-  useEffect(() => {
-  const fetchSizes = async () => {
-    const { data, error } = await supabase.from("sizes").select("*");
-    if (error) {
-      console.error("Supabase error:", error.message, error);
-      return;
-    }
-    setSizes(data || []);
-  };
+    const mapped: Size[] = data.map((row) => ({
+      id: row.id,
+      size: row.size ?? "",
+      status: row.status,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+    }));
 
-    fetchSizes();
-  }, []);
+    setSizes(mapped);
+  } catch (error) {
+    console.error("Supabase error:", error);
+  }
+}, []);
 
+useEffect(() => {
+  const timeout = window.setTimeout(() => {
+    void fetchSizes();
+  }, 0);
 
+  return () => window.clearTimeout(timeout);
+}, [fetchSizes]);
+    
   useEffect(() => {
     const timeout = setTimeout(() => {
       // setDebouncedFilters(filters);
@@ -75,38 +110,28 @@ export default function Sizes() {
 
       if (editingId) {
         // Update existing size
-        const response = await fetch("/api/sizes", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingId,
-            size: formData.size,
-            status: formData.status,
-          }),
-        });
 
-        if (!response.ok) throw new Error("Failed to update size");
-        setError("");
+        await updateSize( editingId, formData.size, formData.status === "Active");
+
+      
       } else {
         // Create new size
-        const response = await fetch("/api/sizes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            size: formData.size,
-            status: formData.status,
-          }),
-        });
+        await createSize(
+          formData.size,
+          formData.status === "Active"
+        );
+        
 
-        if (!response.ok) throw new Error("Failed to create size");
-        setError("");
+
       }
 
       // Reset form and refresh list
       setFormData({ size: "", status: "Active" });
       setEditingId(null);
       setShowModal(false);
-      // await fetchSizes();
+
+      fetchSizes();
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       console.error(err);
@@ -115,7 +140,7 @@ export default function Sizes() {
 
   // Handle edit
   const handleEdit = (size: Size) => {
-    setFormData({ size: size.size, status: size.status });
+    setFormData({ size: size.size, status: size.status ?"Active" : "Inactive" });
     setEditingId(size.id);
     setShowModal(true);
   };
@@ -171,66 +196,7 @@ export default function Sizes() {
                   <th className="text-left px-4 py-3 font-medium">Created At</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
-
-                {/* Filter Row */}
-                <tr className="bg-gray-50 dark:bg-gray-800">
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Id"
-                      value={filters.id}
-                      onChange={(e) =>
-                        setFilters({ ...filters, id: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Size"
-                      value={filters.size}
-                      onChange={(e) =>
-                        setFilters({ ...filters, size: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Status"
-                      value={filters.status}
-                      onChange={(e) =>
-                        setFilters({ ...filters, status: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Created By"
-                      value={filters.createdBy}
-                      onChange={(e) =>
-                        setFilters({ ...filters, createdBy: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Created At"
-                      value={filters.createdAt}
-                      onChange={(e) =>
-                        setFilters({ ...filters, createdAt: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2"></th>
-                </tr>
+                
               </thead>
 
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -267,7 +233,7 @@ export default function Sizes() {
                         {item.createdBy || "Unknown"}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {item.createdAt}
+                        {formatDate(item.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-center gap-2">
@@ -384,7 +350,7 @@ export default function Sizes() {
                   className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 w-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
+                    setFormData({ ...formData, status: e.target.value as StatusLabel })
                   }
                 >
                   <option value="Active">Active</option>

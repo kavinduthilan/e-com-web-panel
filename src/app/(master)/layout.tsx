@@ -13,7 +13,7 @@ export default function MasterLayout({
 }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   
-  console.log('master is rendered');
+  
 
   // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen
