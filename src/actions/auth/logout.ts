@@ -1,21 +1,13 @@
 "use server"
 
-import { createServerActionClient } from "@/lib/supabase/server-action";
 import { redirect } from "next/navigation";
+import { deleteSession } from "@/lib/session";
 
 
 export async function logout(){
      try {
-          const supabase = await createServerActionClient();
 
-          const {error} = await supabase.auth.signOut();
-
-          if (error) {
-               return {
-                    success: false,
-                    message: error.message,
-               };
-          }
+          await deleteSession();
 
           
      } catch (error) {

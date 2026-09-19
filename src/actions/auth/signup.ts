@@ -1,20 +1,21 @@
 "use server";
 
-import { createServerActionClient } from "@/lib/supabase/server-action";
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
+import {prisma} from "@lib/prisma";
+import { createSession } from "@/lib/session";
 
 type SignupData = {
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   password: string;
 };
 
 export async function signup(data: SignupData) {
-  const { firstName, lastName, email, password } = data;
+  const { name, email, password } = data;
 
   // Validation
-  if (!firstName || !lastName || !email || !password) {
+  if (!name || !email || !password) {
     return {
       success: false,
       message: "All fields are required.",
@@ -29,47 +30,28 @@ export async function signup(data: SignupData) {
   }
 
   try {
-    const supabase = await createServerActionClient();
+    // check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: {email},
+      select: {id: true}
+    });
 
-    // Let Supabase Auth create the user (handles hashing, uniqueness, etc.)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        },
+    if (existingUser) {
+      return { success: false, message: "An account with this email already exists." };
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
       },
     });
 
-    if (authError) {
-      return {
-        success: false,
-        message: authError.message,
-      };
-    }
-
-    if (!authData.user) {
-      return {
-        success: false,
-        message: "Something went wrong creating your account.",
-      };
-    }
-
-    // Create the profile row
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: authData.user.id,
-      first_name: firstName,
-      last_name: lastName,
-    });
-
-    if (profileError) {
-      return {
-        success: false,
-        message: profileError.message,
-      };
-    }
+    await createSession(user.id);
+    
   } catch (error) {
     console.error(error);
 

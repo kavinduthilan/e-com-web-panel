@@ -1,11 +1,11 @@
 "use server"
 
 import { z } from "zod";
-import { deleteSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { LoginState } from "@/lib/definitions";
-import { createServerActionClient } from "@/lib/supabase/server-action";
-
+import { prisma } from "@lib/prisma";
+import bcrypt from "bcryptjs";
+import { createSession } from "@/lib/session";
 
 
 const loginSchema = z.object({
@@ -29,19 +29,33 @@ export async function login(prevState: LoginState, formData: FormData) {
 
   console.log(email, password)
 
-  const supabase = await createServerActionClient();
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+  // find user 
+  const user = await prisma.user.findUnique({
+    where : {
+      email
+    }
   });
 
-  if (error) {
+  if (!user){
     return {
-      message: "Login failed. Please check your email and password and try again.",
+      message : 
+        "Login failed. Please check your password and try again.",
+    };
+  }
+
+  // compare password with hashed password
+  const passwordMatch = await bcrypt.compare(password, user.password);
+
+  if (!passwordMatch) {
+    return {
+      message: 
+      "Login failed. Please check your email and password and try again.",
     }
   }
-  console.log('data', data);
+
+  await createSession(user.id);
+
+  console.log("Logged in user:", user);
   
   redirect("/");
 }

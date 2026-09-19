@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
 import { createSize, getSizes, updateSize } from "@/actions/sizes/sizes";
-import { getCurrentUser } from "@/actions/auth/getCurrentUser";
+import { getCurrentUser } from "@/actions/auth/getUser";
 
 interface Size {
   id: number;

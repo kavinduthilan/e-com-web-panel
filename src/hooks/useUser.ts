@@ -1,29 +1,29 @@
-// hooks/useUser.ts
-"use client";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
-export function useUser() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+// "use client";
+// import { useEffect, useState } from "react";
+// import { createClient } from "@/lib/supabase/client";
+// import type { User } from "@supabase/supabase-js";
 
-  useEffect(() => {
-    const supabase = createClient();
+// export function useUser() {
+//   const [user, setUser] = useState<User | null>(null);
+//   const [loading, setLoading] = useState(true);
 
-    // initial fetch
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-    });
+//   useEffect(() => {
+//     const supabase = createClient();
 
-    // keep in sync with login/logout
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+//     // initial fetch
+//     supabase.auth.getUser().then(({ data }) => {
+//       setUser(data.user);
+//       setLoading(false);
+//     });
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
+//     // keep in sync with login/logout
+//     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+//       setUser(session?.user ?? null);
+//     });
 
-  return { user, loading };
-}
+//     return () => listener.subscription.unsubscribe();
+//   }, []);
+
+//   return { user, loading };
+// }
