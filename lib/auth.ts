@@ -17,6 +17,7 @@ export function getLoggedInUser(request: NextRequest) {
      }
      catch (error) {
           console.error("Error decoding token:", error);
+          
           return null;
      }
 
