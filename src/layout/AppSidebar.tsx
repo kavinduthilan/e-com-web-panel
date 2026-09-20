@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
@@ -45,7 +44,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Sizes", path: "/sizes", pro: false },
       { name: "Categories", path: "/categories", pro: false },
-      { name: "SubCategories", path: "/sub-categories", pro: false}
+      { name: "Brands", path: "/brands", pro: false}
     ],
   },
 

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
-import { createSize, getSizes, updateSize } from "@/actions/sizes/sizes";
+import { createBrand, getBrands, updateBrand } from "@/actions/brands/brands";
 import { Status } from "@/generated/prisma/enums";
 
-interface Size {
+interface Brand {
   id: number;
   name: string;
   status: Status;
@@ -13,8 +13,8 @@ interface Size {
   createdBy: {name: string};
 }
 
-export default function Sizes() {
-  const [sizes, setSizes] = useState<Size[]>([]);
+export default function Brands() {
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState<{ name: string; status: Status }>({
@@ -41,9 +41,9 @@ export default function Sizes() {
   // component.tsx
 const fetchSizes = useCallback(async () => {
   try {
-    const data = await getSizes();
+    const data = await getBrands();
   
-    setSizes(data);
+    setBrands(data);
   } catch (error) {
     console.error("Supabase error:", error);
   }
@@ -71,21 +71,21 @@ useEffect(() => {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      setError("Please enter a size");
+      setError("Please enter a brand");
       return;
     }
 
     try { // Replace with actual user ID from auth
 
       if (editingId) {
-        // Update existing size
+        // Update existing brand
 
-        await updateSize( editingId, formData.name, formData.status);
+        await updateBrand( editingId, formData.name, formData.status);
 
       
       } else {
-        // Create new size
-        await createSize(
+        // Create new brand
+        await createBrand(
           formData.name,
           formData.status
         );
@@ -108,9 +108,9 @@ useEffect(() => {
   };
 
   // Handle edit
-  const handleEdit = (size: Size) => {
-    setFormData({ name: size.name, status: size.status });
-    setEditingId(size.id);
+  const handleEdit = (brand: Brand) => {
+    setFormData({ name: brand.name, status: brand.status });
+    setEditingId(brand.id);
     setShowModal(true);
   };
 
@@ -127,10 +127,10 @@ useEffect(() => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-            Sizes List
+            Brands List
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage your product sizes efficiently
+            Manage your product brands efficiently
           </p>
         </div>
 
@@ -139,7 +139,7 @@ useEffect(() => {
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white rounded-lg text-sm"
           >
-            <Plus size={16} /> Add Size
+            <Plus size={16} /> Add Brand
           </button>
         </div>
       </div>
@@ -159,7 +159,7 @@ useEffect(() => {
               <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Id</th>
-                  <th className="text-left px-4 py-3 font-medium">Size</th>
+                  <th className="text-left px-4 py-3 font-medium">Brand</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Created By</th>
                   <th className="text-left px-4 py-3 font-medium">Created At</th>
@@ -169,14 +169,14 @@ useEffect(() => {
               </thead>
 
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {sizes?.length === 0 ? (
+                {brands?.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      No sizes found
+                      No brands found
                     </td>
                   </tr>
                 ) : (
-                  sizes?.map((item) => (
+                  brands?.map((item) => (
                     <tr
                       key={item.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -223,7 +223,7 @@ useEffect(() => {
             {/* pagination */}
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
 
-              {/* Page Size */}
+              {/* Page Brand */}
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -292,13 +292,13 @@ useEffect(() => {
             className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg"
           >
             <h2 className="text-lg font-semibold mb-4 dark:text-white">
-              {editingId ? "Edit Size" : "Add Size"}
+              {editingId ? "Edit Brand" : "Add Brand"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Size Name
+                  Brand Name
                 </label>
                 <input
                   type="text"

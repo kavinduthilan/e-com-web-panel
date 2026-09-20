@@ -56,6 +56,7 @@ model Session {
 model Category {
   id Int @id @default(autoincrement())
   name String
+  status Status  @default(Active)
   createdById Int
   createdBy User @relation(fields: [createdById], references: [id])
   createdAt DateTime @default(now())
@@ -68,6 +69,7 @@ model Category {
 model Brand {
   id Int @id @default(autoincrement())
   name String
+  status Status  @default(Active)
   createdById Int
   createdBy User @relation(fields: [createdById], references: [id])
   createdAt DateTime @default(now())
@@ -80,6 +82,7 @@ model Brand {
 model Size {
   id Int @id @default(autoincrement())
   name String
+  status Status  @default(Active)
   createdById Int
   createdBy User @relation(fields: [createdById], references: [id])
   createdAt DateTime @default(now())
@@ -194,6 +197,11 @@ enum PaymentStatus {
   PARTIALLY_PAID
   PAID
   REFUNDED
+}
+
+enum Status {
+  Active
+  Deactivated
 }
 
 

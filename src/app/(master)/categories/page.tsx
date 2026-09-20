@@ -2,21 +2,25 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2 } from "lucide-react";
+import { createCategory, getCategories, updateCategory } from "@/actions/categories/category";
+import { Status } from "@/generated/prisma/enums";
 
-interface Size {
+interface Category {
   id: number;
-  size: string;
-  status: string;
-  createdAt: string;
-  createdBy?: string;
+  name: string;
+  status: Status;
+  createdAt: Date;
+  createdBy: {name: string};
 }
 
-export default function Categories() {
-  const [sizes, setSizes] = useState<Size[]>([]);
+export default function  Categories() {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [formData, setFormData] = useState({ size: "", status: "Active" });
+  const [formData, setFormData] = useState<{ name: string; status: Status }>({
+    name: "",
+    status: "Active",
+  });
   const [editingId, setEditingId] = useState<number | null>(null);
 
   // pagination
@@ -24,53 +28,39 @@ export default function Categories() {
   const [pageSize, setPageSize] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
 
+
   // filters
   const [filters, setFilters] = useState({
     id: "",
-    size: "",
+    name: "",
     status: "",
     createdBy: "",
     createdAt: "",
   });
 
-  const [debouncedFilters, setDebouncedFilters] = useState(filters);
+  // component.tsx
+const fetchCategories = useCallback(async () => {
+  try {
+    const data = await getCategories();
+  
+    setCategories(data);
+  } catch (error) {
+    console.error("Supabase error:", error);
+  }
+}, []);
 
-  const fetchSizes = useCallback(async () => {
-    try {
-      setLoading(true);
+useEffect(() => {
+  const timeout = window.setTimeout(() => {
+    void fetchCategories();
+  }, 0);
 
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-        size: debouncedFilters.size,
-        status: debouncedFilters.status,
-        createdBy: debouncedFilters.createdBy, 
-      });
-
-      const res = await fetch(`/api/sizes?${params.toString()}`);
-      const result = await res.json();
-
-      setSizes(result.data);
-      setTotalPages(result.totalPages);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, debouncedFilters]);
-
-  // -----------------------------
-  // FETCH DATA (ONLY ON LOAD)
-  // -----------------------------
-  useEffect(() => {
-    fetchSizes();
-  }, [fetchSizes]);
-
+  return () => window.clearTimeout(timeout);
+}, [fetchCategories]);
+    
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setDebouncedFilters(filters);
-      setPage(1); // reset page when filtering
-    }, 1000); // delay
+      setPage(1); 
+    }, 1000); 
 
     return () => clearTimeout(timeout);
   }, [filters]);
@@ -80,47 +70,37 @@ export default function Categories() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.size.trim()) {
-      setError("Please enter a size");
+    if (!formData.name.trim()) {
+      setError("Please enter a category");
       return;
     }
 
     try { // Replace with actual user ID from auth
 
       if (editingId) {
-        // Update existing size
-        const response = await fetch("/api/sizes", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingId,
-            size: formData.size,
-            status: formData.status,
-          }),
-        });
+        // Update existing category
 
-        if (!response.ok) throw new Error("Failed to update size");
-        setError("");
+        await updateCategory( editingId, formData.name, formData.status);
+
+      
       } else {
-        // Create new size
-        const response = await fetch("/api/sizes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            size: formData.size,
-            status: formData.status,
-          }),
-        });
+        // Create new category
+        await createCategory(
+          formData.name,
+          formData.status
+        );
+        
 
-        if (!response.ok) throw new Error("Failed to create size");
-        setError("");
+
       }
 
       // Reset form and refresh list
-      setFormData({ size: "", status: "Active" });
+      setFormData({ name: "", status: "Active" });
       setEditingId(null);
       setShowModal(false);
-      await fetchSizes();
+
+      fetchCategories();
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       console.error(err);
@@ -128,8 +108,8 @@ export default function Categories() {
   };
 
   // Handle edit
-  const handleEdit = (size: Size) => {
-    setFormData({ size: size.size, status: size.status });
+  const handleEdit = (size: Category) => {
+    setFormData({ name: size.name, status: size.status });
     setEditingId(size.id);
     setShowModal(true);
   };
@@ -137,7 +117,7 @@ export default function Categories() {
   // Handle modal close
   const handleCloseModal = () => {
     setShowModal(false);
-    setFormData({ size: "", status: "Active" });
+    setFormData({ name: "", status: "Active" });
     setEditingId(null);
   };
 
@@ -147,10 +127,10 @@ export default function Categories() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-            Sizes List
+            Categories
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage your product sizes efficiently
+            Manage your product categories efficiently
           </p>
         </div>
 
@@ -159,7 +139,7 @@ export default function Categories() {
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white rounded-lg text-sm"
           >
-            <Plus size={16} /> Add Size
+            <Plus size={16} /> Add Category
           </button>
         </div>
       </div>
@@ -173,93 +153,30 @@ export default function Categories() {
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            Loading sizes...
-          </div>
-        ) : (
+        
           <>
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Id</th>
-                  <th className="text-left px-4 py-3 font-medium">Size</th>
+                  <th className="text-left px-4 py-3 font-medium">Category Name</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Created By</th>
                   <th className="text-left px-4 py-3 font-medium">Created At</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
-
-                {/* Filter Row */}
-                <tr className="bg-gray-50 dark:bg-gray-800">
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Id"
-                      value={filters.id}
-                      onChange={(e) =>
-                        setFilters({ ...filters, id: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Size"
-                      value={filters.size}
-                      onChange={(e) =>
-                        setFilters({ ...filters, size: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Status"
-                      value={filters.status}
-                      onChange={(e) =>
-                        setFilters({ ...filters, status: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Created By"
-                      value={filters.createdBy}
-                      onChange={(e) =>
-                        setFilters({ ...filters, createdBy: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Search Created At"
-                      value={filters.createdAt}
-                      onChange={(e) =>
-                        setFilters({ ...filters, createdAt: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100"
-                    />
-                  </th>
-                  <th className="p-2"></th>
-                </tr>
+                
               </thead>
 
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {sizes?.length === 0 ? (
+                {categories?.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      No sizes found
+                      No categories found
                     </td>
                   </tr>
                 ) : (
-                  sizes?.map((item) => (
+                  categories?.map((item) => (
                     <tr
                       key={item.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -268,23 +185,24 @@ export default function Categories() {
                         {item.id}
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                        {item.size}
+                        {item.name}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === "Active"
-                            ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
-                            : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
-                            }`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.status === "Active"
+                              ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
+                              : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+                          }`}
                         >
                           {item.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                        {item.createdBy || "Unknown"}
+                        {item.createdBy.name}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {item.createdAt}
+                        {item.createdAt.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-center gap-2">
@@ -305,7 +223,7 @@ export default function Categories() {
             {/* pagination */}
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
 
-              {/* Page Size */}
+              {/* Page Category */}
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -358,7 +276,7 @@ export default function Categories() {
               </div>
             </div>
           </>
-        )}
+        
       </div>
 
 
@@ -374,21 +292,21 @@ export default function Categories() {
             className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg"
           >
             <h2 className="text-lg font-semibold mb-4 dark:text-white">
-              {editingId ? "Edit Size" : "Add Size"}
+              {editingId ? "Edit Category" : "Add Category"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Size Name
+                  Category Name
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Small, Medium, Large"
+                  placeholder=""
                   className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 w-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                  value={formData.size}
+                  value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, size: e.target.value })
+                    setFormData({ ...formData, name: e.target.value })
                   }
                 />
               </div>
@@ -401,11 +319,11 @@ export default function Categories() {
                   className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 w-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
+                    setFormData({ ...formData, status: e.target.value as Status })
                   }
                 >
                   <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="Deactivated">Deactivated</option>
                 </select>
               </div>
 

@@ -5,12 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@lib/prisma";
 import { revalidatePath } from "next/cache";
 
-
-
-
-
-export async function getSizes(){
-     return prisma.size.findMany({
+export async function getCategories(){
+     return prisma.category.findMany({
           orderBy: { createdAt: "desc" },
           select: {
                id: true,
@@ -22,9 +18,7 @@ export async function getSizes(){
   });
 }
 
-
-
-export async function createSize(name: string, status: Status) {
+export async function createCategory(name: string, status: Status) {
 
      const data = { name, status };
 
@@ -32,7 +26,7 @@ export async function createSize(name: string, status: Status) {
 
      if (!user) throw new Error("Unauthorized");
 
-     const created = await prisma.size.create({
+     const created = await prisma.category.create({
           data: {
                ...data,
                createdById: user.id
@@ -45,18 +39,18 @@ export async function createSize(name: string, status: Status) {
 }
 
 
-export async function updateSize(id:number, name: string, status: Status) {
+export async function updateCategory(id:number, name: string, status: Status) {
      
      const data = { name, status };
 
-     const updated = await prisma.size.update({
+     const updated = await prisma.category.update({
           where: { id },
           data,                    
      });
 
      
 
-     revalidatePath("/sizes");
+     revalidatePath("/categories");
 
      return updated;
 }
